@@ -1,0 +1,5 @@
+{
+  "name": "AddisManage - Restaurant System",
+  "description": "A comprehensive, offline-capable restaurant management prototype tailored for the Ethiopian market including POS, KDS, Queue, and Inventory.",
+  "requestFramePermissions": []
+}
