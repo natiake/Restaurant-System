@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Role, Staff } from '../types';
@@ -49,7 +48,7 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     return <div className="min-h-screen bg-gray-100 flex items-center justify-center">{children}</div>;
   }
 
-  // Role-Based Navigation Configuration
+  // Strict Navigation Filtering
   const navItems = [
     // POS: Cashier, Waiter, Admin, Manager
     { path: '/pos', label: t.pos, roles: [Role.ADMIN, Role.STAFF, Role.MANAGER, Role.CASHIER] },
@@ -60,12 +59,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     // Queue: Front staff
     { path: '/queue', label: t.queue, roles: [Role.ADMIN, Role.STAFF, Role.MANAGER, Role.CASHIER] },
     
-    // Manager Panel (Staff, Tables, Inventory, Payroll)
-    // In this system, Manager Panel is handled by the /admin route but with restricted view
+    // Manager/Admin/Storekeeper Panel
     { 
         path: '/admin', 
-        label: user.role === Role.MANAGER ? t.manager : t.admin, 
-        roles: [Role.ADMIN, Role.MANAGER] 
+        label: user.role === Role.STOREKEEPER ? t.stock : (user.role === Role.MANAGER ? t.manager : t.admin), 
+        roles: [Role.ADMIN, Role.MANAGER, Role.STOREKEEPER] 
     },
     
     // Separate Table Management (Also available in Admin, but quick link for Floor Managers)
@@ -75,8 +73,11 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
     { path: '/reviews', label: t.reviews, roles: [Role.ADMIN, Role.STAFF, Role.MANAGER] },
     
     // Digital Board
-    { path: '/menu-board', label: t.tvMode, roles: [Role.ADMIN, Role.STAFF, Role.MANAGER] },
+    { path: '/menu-board', label: t.tvMode, roles: [Role.ADMIN, Role.STAFF, Role.MANAGER, Role.KITCHEN] },
   ];
+
+  // Filter items strictly
+  const allowedNavItems = navItems.filter(item => item.roles.includes(user.role));
 
   return (
     <div className="flex h-screen overflow-hidden bg-gray-100">
@@ -88,90 +89,71 @@ const Layout: React.FC<LayoutProps> = ({ children, user, onLogout }) => {
       )}
 
       {/* Mobile Header */}
-      <div className="md:hidden fixed top-0 left-0 w-full bg-slate-800 text-white z-30 flex justify-between items-center p-4 shadow-md pt-6">
-         <h1 className="text-lg font-bold text-yellow-500">AddisManage</h1>
-         <button 
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="p-2 focus:outline-none"
-         >
-           {mobileMenuOpen ? '✖' : '☰'}
-         </button>
+      <div className="md:hidden fixed top-0 left-0 w-full bg-slate-800 text-white z-30 flex justify-between items-center p-4">
+          <span className="font-bold">Addis POS</span>
+          <button onClick={() => setMobileMenuOpen(!mobileMenuOpen)} className="text-2xl">☰</button>
       </div>
 
-      {/* Overlay for Mobile */}
-      {mobileMenuOpen && (
-          <div 
-            className="fixed inset-0 bg-black bg-opacity-50 z-20 md:hidden"
-            onClick={() => setMobileMenuOpen(false)}
-          ></div>
-      )}
-
       {/* Sidebar */}
-      <aside className={`
-        fixed md:static z-30 bg-slate-800 text-white flex flex-col h-full w-64 transition-transform duration-300 ease-in-out shadow-xl
-        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
-        pt-6 md:pt-0
-      `}>
-        <div className="p-6 border-b border-slate-700 hidden md:block">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-yellow-500">AddisManage</h1>
-            <button 
-              onClick={toggleLanguage}
-              className="text-xs bg-slate-700 px-2 py-1 rounded hover:bg-slate-600 border border-slate-600"
-            >
-              {language === 'en' ? '🇺🇸' : '🇪🇹'}
-            </button>
+      <div className={`fixed md:relative z-40 w-64 bg-slate-900 text-white h-full flex flex-col transition-transform ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:translate-x-0`}>
+          <div className="p-6 border-b border-slate-800 flex items-center justify-between">
+              <div>
+                  <h1 className="text-xl font-bold text-yellow-500">Addis POS</h1>
+                  {branch && <p className="text-xs text-gray-400 mt-1">📍 {branch.name}</p>}
+              </div>
+              <button onClick={toggleLanguage} className="bg-slate-800 px-2 py-1 rounded text-xs font-bold border border-slate-700">
+                  {language === 'en' ? 'AM' : 'EN'}
+              </button>
           </div>
-          <div className="mt-4">
-             <div className="flex items-center justify-between">
-                <p className="text-lg font-bold text-white">{user.name}</p>
-                <span className="text-xs bg-slate-900 px-1 rounded text-slate-400 font-mono">{user.id}</span>
+
+          <div className="p-4 border-b border-slate-800 bg-slate-800/50">
+             <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center font-bold text-lg border border-slate-600">
+                     {user.name.charAt(0)}
+                 </div>
+                 <div>
+                     <p className="font-bold text-sm">{user.name}</p>
+                     <p className="text-xs text-gray-400 uppercase">{user.role}</p>
+                 </div>
              </div>
-             <p className="text-xs text-yellow-400 uppercase tracking-wider font-bold mt-1">{user.role}</p>
-             <p className="text-xs text-slate-500 mt-1 truncate">{branch?.name}</p>
-             
-             <div className="mt-2 flex items-center gap-2">
-                 <span className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500' : 'bg-gray-400'}`}></span>
-                 <span className="text-xs text-slate-500">{isOnline ? 'Online' : 'Offline Mode'}</span>
+             <div className="mt-4 flex gap-2">
+                 <button 
+                    onClick={toggleBreak} 
+                    className={`flex-1 py-1 rounded text-xs font-bold ${isOnBreak ? 'bg-yellow-500 text-black' : 'bg-slate-700 text-gray-300'}`}
+                 >
+                     {isOnBreak ? t.resumeWork : t.takeBreak}
+                 </button>
+                 <button onClick={handleLogout} className="flex-1 py-1 rounded text-xs font-bold bg-red-600 hover:bg-red-700 text-white">{t.logout}</button>
              </div>
           </div>
-        </div>
 
-        <nav className="flex-1 overflow-y-auto py-4">
-          {navItems.filter(item => item.roles.includes(user.role)).map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
-              onClick={() => setMobileMenuOpen(false)}
-              className={`block px-6 py-3 hover:bg-slate-700 transition-colors ${
-                location.pathname === item.path ? 'bg-slate-700 border-l-4 border-yellow-500' : ''
-              }`}
-            >
-              {item.label}
-            </Link>
-          ))}
-        </nav>
-
-        <div className="p-4 border-t border-slate-700 space-y-2">
-          <button
-            onClick={toggleBreak}
-            className={`w-full py-2 px-4 rounded text-white transition-colors font-bold text-sm border ${isOnBreak ? 'bg-yellow-600 border-yellow-600' : 'bg-transparent border-slate-500 hover:bg-slate-700'}`}
-          >
-             {isOnBreak ? '▶ Resume Work' : '⏸ Take Break'}
-          </button>
-          <button
-            onClick={handleLogout}
-            className="w-full bg-red-600 hover:bg-red-700 py-2 px-4 rounded text-white transition-colors font-bold shadow-lg"
-          >
-            {t.logout}
-          </button>
-        </div>
-      </aside>
+          <nav className="flex-1 overflow-y-auto p-4 space-y-2">
+              {allowedNavItems.map(item => (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className={`flex items-center px-4 py-3 rounded-xl transition-colors ${location.pathname.startsWith(item.path) ? 'bg-blue-600 text-white font-bold shadow-lg' : 'text-slate-300 hover:bg-slate-800 hover:text-white'}`}
+                  >
+                      {item.label}
+                  </Link>
+              ))}
+          </nav>
+          
+          <div className="p-4 text-center text-xs text-gray-600 border-t border-slate-800">
+              v1.2.0 • {isOnline ? '🟢 Online' : '🔴 Offline'}
+          </div>
+      </div>
 
       {/* Main Content */}
-      <main className="flex-1 overflow-auto relative pt-16 md:pt-0 w-full">
-        {children}
-      </main>
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+          {/* Overlay for mobile sidebar */}
+          {mobileMenuOpen && <div className="fixed inset-0 bg-black/50 z-30 md:hidden" onClick={() => setMobileMenuOpen(false)}></div>}
+          
+          <main className="flex-1 overflow-auto pt-16 md:pt-0">
+              {children}
+          </main>
+      </div>
     </div>
   );
 };

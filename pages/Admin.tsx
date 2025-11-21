@@ -33,10 +33,15 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
   const [menuForm, setMenuForm] = useState<Partial<MenuItem>>({});
 
   const isManager = user.role === Role.MANAGER;
+  const isStoreKeeper = user.role === Role.STOREKEEPER;
 
   useEffect(() => {
+    // Restrict Storekeeper to Inventory tab immediately
+    if (isStoreKeeper) {
+        setActiveTab('inventory');
+    }
     refreshData();
-  }, [timeRange]);
+  }, [timeRange, isStoreKeeper]);
 
   const refreshData = () => {
     const orders = DataService.getOrders();
@@ -45,6 +50,8 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
     
     setInventory(items);
     setLogs(logsData);
+
+    if (isStoreKeeper) return; // Storekeepers don't need sales data
 
     // Filter orders by Time Range
     const now = Date.now();
@@ -192,15 +199,17 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
     }
   };
 
-  const tabs = [
+  let tabs = [
       { id: 'dashboard', label: 'Dashboard' },
       { id: 'staff', label: 'Staff & HR' },
       { id: 'inventory', label: 'Inventory' },
       { id: 'logs', label: 'System Logs' },
   ];
 
-  // Only Admin gets Data & AI
-  if (!isManager) {
+  // Role Based Tab Filtering
+  if (isStoreKeeper) {
+      tabs = [{ id: 'inventory', label: 'Stock & Inventory' }];
+  } else if (!isManager) {
       tabs.push({ id: 'data', label: 'Data / AI' });
   }
 
@@ -208,7 +217,9 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
     <div className="p-4 md:p-8 max-w-7xl mx-auto">
       <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-slate-800">{isManager ? 'Manager Panel' : 'Admin Dashboard'}</h1>
+            <h1 className="text-3xl font-bold text-slate-800">
+                {isStoreKeeper ? 'Inventory Management' : (isManager ? 'Manager Panel' : 'Admin Dashboard')}
+            </h1>
             <p className="text-sm text-slate-500">Welcome back, {user.name} ({user.id})</p>
           </div>
           <div className="flex flex-wrap justify-center gap-2">
@@ -224,7 +235,7 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
           </div>
       </div>
 
-      {activeTab === 'dashboard' && (
+      {activeTab === 'dashboard' && !isStoreKeeper && (
         <>
             <div className="flex justify-end mb-4">
                 <div className="bg-white rounded-lg shadow p-1 flex">
@@ -331,7 +342,7 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
                 </div>
             </div>
 
-            {!isManager && (
+            {!isManager && !isStoreKeeper && (
                 <div className="bg-gradient-to-br from-purple-600 to-indigo-700 p-6 rounded-xl shadow-sm text-white relative overflow-hidden">
                     <h3 className="uppercase text-xs font-bold opacity-80">AI Manager Insight</h3>
                     <button 
@@ -351,7 +362,7 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
         </>
       )}
       
-      {activeTab === 'staff' && (
+      {activeTab === 'staff' && !isStoreKeeper && (
           <div className="bg-white rounded-xl shadow-sm border border-slate-200 min-h-[600px]">
              <StaffManagement />
           </div>
@@ -404,7 +415,7 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
         </div>
       )}
 
-      {activeTab === 'logs' && (
+      {activeTab === 'logs' && !isStoreKeeper && (
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
               <h3 className="font-bold text-lg mb-4">System Logs</h3>
               <div className="overflow-y-auto max-h-[600px]">
@@ -433,7 +444,7 @@ const Admin: React.FC<AdminProps> = ({ user }) => {
       )}
 
       {/* Data Management - Admin Only */}
-      {!isManager && activeTab === 'data' && (
+      {!isManager && !isStoreKeeper && activeTab === 'data' && (
           <div className="bg-white p-6 rounded-xl shadow-sm border border-slate-200">
               <h3 className="font-bold text-lg mb-4">Data Management</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

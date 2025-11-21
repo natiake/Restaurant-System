@@ -13,6 +13,32 @@ import Reviews from './pages/Reviews';
 import MenuBoard from './pages/MenuBoard';
 import StaffManagement from './pages/StaffManagement';
 
+// --- Role Guard Component ---
+interface ProtectedRouteProps {
+  user: Staff | null;
+  allowedRoles: Role[];
+  children: React.ReactElement;
+}
+
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ user, allowedRoles, children }) => {
+  if (!user) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!allowedRoles.includes(user.role)) {
+    // Redirect unauthorized users to their specific allowed landing page
+    let redirectPath = "/login";
+    if (user.role === Role.KITCHEN) redirectPath = "/kds";
+    else if (user.role === Role.STAFF || user.role === Role.CASHIER) redirectPath = "/pos";
+    else if (user.role === Role.STOREKEEPER) redirectPath = "/admin";
+    else if (user.role === Role.ADMIN || user.role === Role.MANAGER) redirectPath = "/admin";
+    
+    return <Navigate to={redirectPath} replace />;
+  }
+
+  return children;
+};
+
 const TablesPage: React.FC = () => {
   const [tables, setTables] = useState<Table[]>([]);
   const [staff, setStaff] = useState<Staff[]>([]);
@@ -107,10 +133,11 @@ function App() {
     setLoading(false);
   }, []);
 
+  // Determine where to send user upon successful login
   const getRedirectPath = (role: Role) => {
       if (role === Role.KITCHEN) return "/kds";
-      // Managers also go to admin route, but the Admin page will render Manager View
       if (role === Role.ADMIN || role === Role.MANAGER) return "/admin";
+      if (role === Role.STOREKEEPER) return "/admin";
       if (role === Role.STAFF || role === Role.CASHIER) return "/pos";
       return "/pos";
   };
@@ -123,24 +150,54 @@ function App() {
         <Routes>
           <Route path="/login" element={!user ? <div className="flex justify-center pt-20"><Login onLogin={setUser} /></div> : <Navigate to={getRedirectPath(user.role)} />} />
           
-          <Route path="/pos" element={user ? <POS staffId={user.id} staffName={user.name} role={user.role} /> : <Navigate to="/login" />} />
-          <Route path="/kds" element={user ? <KDS /> : <Navigate to="/login" />} />
-          <Route path="/queue" element={user ? <Queue user={user} /> : <Navigate to="/login" />} />
-          <Route path="/tables" element={user ? <TablesPage /> : <Navigate to="/login" />} />
+          {/* POS: Staff, Cashier, Manager, Admin */}
+          <Route path="/pos" element={
+            <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.STAFF, Role.CASHIER]}>
+              <POS staffId={user?.id || ''} staffName={user?.name || ''} role={user?.role || Role.STAFF} />
+            </ProtectedRoute>
+          } />
           
-          {/* Admin & Manager share the same route component but different permissions */}
-          <Route path="/admin" element={user ? <Admin user={user} /> : <Navigate to="/login" />} />
+          {/* KDS: Kitchen, Manager, Admin */}
+          <Route path="/kds" element={
+            <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.KITCHEN]}>
+              <KDS />
+            </ProtectedRoute>
+          } />
           
-          {/* Fallback for old inventory route, redirects to admin inventory tab via Admin page default or logic inside Admin */}
-          <Route path="/inventory" element={user ? <Navigate to="/admin" /> : <Navigate to="/login" />} />
+          {/* Queue: Staff, Cashier, Manager, Admin */}
+          <Route path="/queue" element={
+            <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.STAFF, Role.CASHIER]}>
+              <Queue user={user!} />
+            </ProtectedRoute>
+          } />
           
-          {/* Fallback for old staff route, redirects to admin */}
-          <Route path="/staff" element={user ? <Navigate to="/admin" /> : <Navigate to="/login" />} />
+          {/* Tables: Staff, Cashier, Manager, Admin */}
+          <Route path="/tables" element={
+            <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.STAFF, Role.CASHIER]}>
+              <TablesPage />
+            </ProtectedRoute>
+          } />
           
-          <Route path="/reviews" element={user ? <Reviews /> : <Navigate to="/login" />} />
+          {/* Admin: Admin, Manager, Storekeeper (with internal restrictions) */}
+          <Route path="/admin" element={
+            <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.STOREKEEPER]}>
+              <Admin user={user!} />
+            </ProtectedRoute>
+          } />
           
-          {/* Digital Menu Board */}
-          <Route path="/menu-board" element={user ? <MenuBoard /> : <Navigate to="/login" />} />
+          {/* Reviews: Everyone except Kitchen/Storekeeper basically */}
+          <Route path="/reviews" element={
+             <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.STAFF, Role.CASHIER]}>
+                <Reviews />
+             </ProtectedRoute>
+          } />
+          
+          {/* Menu Board: Everyone */}
+          <Route path="/menu-board" element={
+            <ProtectedRoute user={user} allowedRoles={[Role.ADMIN, Role.MANAGER, Role.STAFF, Role.CASHIER, Role.KITCHEN]}>
+              <MenuBoard />
+            </ProtectedRoute>
+          } />
           
           <Route path="*" element={<Navigate to={user ? getRedirectPath(user.role) : "/login"} />} />
         </Routes>

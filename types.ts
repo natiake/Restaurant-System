@@ -11,7 +11,7 @@ export enum OrderStatus {
   COOKING = 'Cooking',
   READY = 'Ready',
   SERVED = 'Served',
-  HELD = 'Held' // For Hold Order feature
+  HELD = 'Held'
 }
 
 export enum TableStatus {
@@ -26,16 +26,19 @@ export enum Role {
   MANAGER = 'Manager',
   STAFF = 'Staff', // Waiter
   KITCHEN = 'Kitchen',
-  CASHIER = 'Cashier'
+  CASHIER = 'Cashier',
+  STOREKEEPER = 'Storekeeper'
 }
 
 export interface ModifierOption {
   label: string;
+  labelAm?: string; // Amharic Label
   price: number;
 }
 
 export interface ModifierGroup {
-  name: string; // e.g., "Spiciness", "Add-ons"
+  name: string;
+  nameAm?: string; // Amharic Name
   options: ModifierOption[];
   required?: boolean;
   multiSelect?: boolean;
@@ -44,20 +47,22 @@ export interface ModifierGroup {
 export interface MenuItem {
   id: string;
   name: string;
+  nameAm?: string; // Amharic Name
   price: number;
   category: 'Main' | 'Breakfast' | 'Vegan' | 'Drink' | 'Side';
   stock: number;
   ingredients?: string[];
   description?: string;
+  descriptionAm?: string; // Amharic Description
   archived?: boolean;
-  modifiers?: ModifierGroup[]; // New: Customization
-  availableHours?: { start: number; end: number }; // New: Time-based menu
+  modifiers?: ModifierGroup[];
+  availableHours?: { start: number; end: number };
 }
 
 export interface CartItem extends MenuItem {
   quantity: number;
   selectedModifiers?: { group: string; option: ModifierOption }[];
-  cartItemId: string; // Unique ID for splitting
+  cartItemId: string;
 }
 
 export interface Customer {
@@ -73,12 +78,12 @@ export interface Branch {
   id: string;
   name: string;
   location: string;
-  serviceChargeRate: number; // e.g., 0.05 for 5%
+  serviceChargeRate: number;
 }
 
 export interface Order {
   id: string;
-  branchId: string; // Multi-branch support
+  branchId: string;
   tableId: string | 'Takeaway';
   items: CartItem[];
   subtotal: number;
@@ -88,7 +93,7 @@ export interface Order {
   paymentMethod: PaymentMethod;
   timestamp: number;
   staffId: string;
-  customerId?: string; // CRM Link
+  customerId?: string;
   tokenNumber?: string;
   tip?: number;
   discountApplied?: string;
@@ -121,12 +126,14 @@ export interface ManagerReview {
 export interface Staff {
   id: string;
   name: string;
-  pin: string;
+  pin: string; // Used for POS access
+  username?: string; // Used for Admin access
+  password?: string; // Used for Admin access
   role: Role;
   active: boolean;
   phone?: string;
   email?: string;
-  currentSessionId?: string; // Concurrent login tracking
+  currentSessionId?: string;
   isOnBreak?: boolean;
   
   salary: number;

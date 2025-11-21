@@ -1,5 +1,5 @@
 
-import { Order, MenuItem, Table, Staff, OrderStatus, QueueState, Review, AuditLog, TableStatus, AttendanceRecord, ManagerReview, Customer, Branch } from '../types';
+import { Order, MenuItem, Table, Staff, OrderStatus, QueueState, Review, AuditLog, TableStatus, AttendanceRecord, ManagerReview, Customer, Branch, Role } from '../types';
 import { INITIAL_MENU, INITIAL_TABLES, INITIAL_STAFF } from '../constants';
 
 // Keys
@@ -151,7 +151,21 @@ export const DataService = {
 
   verifyPin: (pin: string): Staff | undefined => {
     const staff = DataService.getStaffList();
-    return staff.find(s => s.pin === pin && s.active);
+    // Verify pin, make sure active.
+    // STRICTLY BLOCK ADMIN & STOREKEEPER from using PIN login (must use credentials).
+    // This enforces the bifurcation of the login system.
+    return staff.find(s => s.pin === pin && s.active && s.role !== Role.ADMIN && s.role !== Role.STOREKEEPER);
+  },
+
+  verifyCredentials: (username: string, pass: string): Staff | undefined => {
+    const staff = DataService.getStaffList();
+    // Only Admin, Managers and Storekeepers can use credential login
+    return staff.find(s => 
+        s.username === username && 
+        s.password === pass && 
+        s.active && 
+        (s.role === 'Admin' || s.role === 'Manager' || s.role === 'Storekeeper')
+    );
   },
 
   verifyManagerPin: (pin: string): boolean => {
