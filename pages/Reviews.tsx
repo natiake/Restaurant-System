@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { DataService } from '../services/dataService';
-import { MOCK_STAFF } from '../constants';
-import { Role } from '../types';
+import { Role, Staff } from '../types';
 
 const Reviews: React.FC = () => {
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
   const [selectedStaff, setSelectedStaff] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [waiters, setWaiters] = useState<Staff[]>([]);
 
-  const waiters = MOCK_STAFF.filter(s => s.role !== Role.KITCHEN);
+  useEffect(() => {
+    setWaiters(DataService.getStaffList().filter(s => s.role !== Role.KITCHEN));
+  }, []);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -18,7 +20,8 @@ const Reviews: React.FC = () => {
       rating,
       comment,
       staffId: selectedStaff,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      type: 'CUSTOMER'
     });
     setSubmitted(true);
     setTimeout(() => {

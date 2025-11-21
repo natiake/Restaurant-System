@@ -1,30 +1,48 @@
+
 import React, { useEffect, useState } from 'react';
 import { DataService, socket } from '../services/dataService';
 import { Order, OrderStatus } from '../types';
 
 const KDS: React.FC = () => {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [now, setNow] = useState(Date.now());
 
   useEffect(() => {
     const load = () => {
       const all = DataService.getOrders();
-      // Show Pending and Cooking
       setOrders(all.filter(o => o.status !== OrderStatus.SERVED && o.status !== OrderStatus.READY));
     };
     load();
 
-    const unsub = socket.on('new_order', load);
+    const unsub = socket.on('new_order', () => {
+        DataService.playBeep();
+        load();
+    });
     const unsubUpdate = socket.on('order_update', load);
+    
+    const interval = setInterval(() => setNow(Date.now()), 60000); // Update timers every min
 
     return () => {
       unsub();
       unsubUpdate();
+      clearInterval(interval);
     };
   }, []);
 
   const advanceStatus = (order: Order) => {
     const nextStatus = order.status === OrderStatus.PENDING ? OrderStatus.COOKING : OrderStatus.READY;
-    DataService.updateOrderStatus(order.id, nextStatus);
+    DataService.updateOrderStatus(order.id, nextStatus, "Kitchen Staff");
+  };
+
+  const getTimerColor = (timestamp: number) => {
+      const minutes = (now - timestamp) / 60000;
+      if (minutes > 15) return 'bg-red-600 text-white';
+      if (minutes > 10) return 'bg-orange-500 text-white';
+      return 'bg-green-600 text-white';
+  };
+
+  const getDuration = (timestamp: number) => {
+      return Math.floor((now - timestamp) / 60000) + "m";
   };
 
   return (
@@ -39,7 +57,9 @@ const KDS: React.FC = () => {
           }`}>
             <div className="p-3 bg-gray-200 flex justify-between items-center font-bold border-b border-gray-300">
               <span>#{order.id.slice(-4)}</span>
-              <span className="bg-slate-800 text-white text-xs px-2 py-1 rounded">{new Date(order.timestamp).toLocaleTimeString()}</span>
+              <span className={`text-xs px-2 py-1 rounded font-mono ${getTimerColor(order.timestamp)}`}>
+                  {getDuration(order.timestamp)}
+              </span>
             </div>
             <div className="p-4">
                <div className="mb-3 font-bold text-lg">
